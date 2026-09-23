@@ -12,7 +12,8 @@ on:
         required: false
         default: "15"
   schedule:
-    - cron: "0 3 * * *"   # 06:00 Israel
+    - cron: "0 3 * * *"    # 06:00 Israel
+    - cron: "0 9 * * *"    # 12:00 Israel - אחרי איפוס מכסת ההעלאות של יוטיוב
 
 jobs:
   upload_ready_videos:
@@ -366,6 +367,8 @@ jobs:
           PY
 
   refine_metadata:
+    needs: upload_ready_videos
+    if: always()
 
     runs-on: ubuntu-latest
     steps:
