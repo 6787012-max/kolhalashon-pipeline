@@ -360,7 +360,15 @@ jobs:
                   ok += 1
                   os.remove("ready.mp4")
               except Exception as e:
-                  print("  -> FAILED:", e, flush=True)
+                  # להדפיס גם את סיבת השגיאה מגוף התשובה - בלי זה "400 Bad Request" לבדו
+                  # לא מבדיל בין מכסה יומית שנגמרה (uploadLimitExceeded, תקין - ימשיך מחר)
+                  # לבין תקלה אמיתית שצריך לטפל בה
+                  detail = ""
+                  try:
+                      detail = e.read().decode("utf-8", "replace")[:300] if hasattr(e, "read") else ""
+                  except Exception:
+                      pass
+                  print("  -> FAILED:", e, detail, flush=True)
                   failed += 1
 
           print("youtube upload done: ok=%d failed=%d" % (ok, failed), flush=True)
