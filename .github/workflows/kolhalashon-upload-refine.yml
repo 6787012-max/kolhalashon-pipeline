@@ -317,13 +317,42 @@ jobs:
           # one hard rule that stays is never Shabbat - if "now" lands on a Saturday, push to
           # Sunday morning. Videos processed in the same run are spread a few minutes apart
           # (not days) just so they don't all technically go live in the same instant.
+          # 23/09/2026 - Yosef: "upload every day, Shabbat included, but PUBLISH only on a
+          # weekday". Uploading is just a file transfer on GitHub's servers and keeps running
+          # daily; only the scheduled go-live date is what must avoid Shabbat.
+          # The previous version skipped "Saturday in UTC", which is the wrong window: a slot
+          # at Friday 20:00 Israel time is Friday 17:00 UTC, so it passed the check and would
+          # have gone live in the middle of Shabbat. Everything here is decided in Asia/Jerusalem.
           import datetime
+          try:
+              from zoneinfo import ZoneInfo
+              IL = ZoneInfo("Asia/Jerusalem")
+          except Exception:
+              IL = datetime.timezone(datetime.timedelta(hours=3))  # fallback: Israel summer time
+          UTC = datetime.timezone.utc
+
+          def _il(dt):
+              return dt.replace(tzinfo=UTC).astimezone(IL)
+
+          def _is_shabbat(dt):
+              il = _il(dt)
+              return (il.weekday() == 4 and il.hour >= 15) or il.weekday() == 5
+
+          def _sunday_morning(dt):
+              il = _il(dt)
+              d = il.date()
+              while d.weekday() != 6:  # 6 = Sunday
+                  d += datetime.timedelta(days=1)
+              target = datetime.datetime.combine(d, datetime.time(8, 0), tzinfo=IL)
+              if target <= il:
+                  target += datetime.timedelta(days=7)
+              return target.astimezone(UTC).replace(tzinfo=None)
+
           _next_slot = [datetime.datetime.utcnow() + datetime.timedelta(minutes=10)]
 
           def next_publish_slot():
-              while _next_slot[0].weekday() == 5:  # Saturday = Shabbat, skip to Sunday morning
-                  _next_slot[0] = datetime.datetime.combine(
-                      _next_slot[0].date() + datetime.timedelta(days=1), datetime.time(4, 0))
+              if _is_shabbat(_next_slot[0]):
+                  _next_slot[0] = _sunday_morning(_next_slot[0])
               slot = _next_slot[0]
               _next_slot[0] = slot + datetime.timedelta(minutes=15)
               return slot.strftime("%Y-%m-%dT%H:%M:%SZ")
