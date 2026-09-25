@@ -10,10 +10,11 @@ on:
       ready_upload_limit:
         description: "Max videos to upload this run"
         required: false
-        default: "15"
+        default: "60"
   schedule:
     - cron: "0 3 * * *"    # 06:00 Israel
     - cron: "0 9 * * *"    # 12:00 Israel - אחרי איפוס מכסת ההעלאות של יוטיוב
+    - cron: "0 17 * * *"   # 20:00 Israel - ניסיון שלישי, כי GitHub מאחר ריצות מתוזמנות בשעות
 
 jobs:
   upload_ready_videos:
@@ -28,7 +29,7 @@ jobs:
           YCID: ${{ secrets.YOUTUBE_CLIENT_ID }}
           YCSEC: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
           YRTOK: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
-          LIMIT: ${{ github.event.inputs.ready_upload_limit || '15' }}
+          LIMIT: ${{ github.event.inputs.ready_upload_limit || '60' }}
         run: |
           python3 - <<'PY'
           import os, json, re, urllib.request, urllib.error, urllib.parse
@@ -399,6 +400,9 @@ jobs:
                       pass
                   print("  -> FAILED:", e, detail, flush=True)
                   failed += 1
+                  if "uploadLimitExceeded" in detail or "quotaExceeded" in detail:
+                      print("  מכסת ההעלאות היומית של יוטיוב נגמרה - עוצר את הריצה", flush=True)
+                      break
 
           print("youtube upload done: ok=%d failed=%d" % (ok, failed), flush=True)
           PY
